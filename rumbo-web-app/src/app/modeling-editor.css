@@ -1,0 +1,389 @@
+/* Modeling editor v2: layer focus, selection/editing and automatic proposal UI. */
+.model-toolbar {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px;
+  overflow-x: auto;
+}
+
+.tool-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding-top: 13px;
+}
+
+.tool-group-label {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  color: #9aa4b5;
+  font-size: 7px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.tool-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 3px 4px;
+  background: #e6eaf1;
+}
+
+.toolbar-grow { flex: 1 0 14px; }
+
+.utility-group {
+  padding-left: 2px;
+  padding-right: 2px;
+  border-radius: 9px;
+  background: #fafbfc;
+}
+
+.utility-group .tool-button { color: #758095; }
+
+.auto-model-button {
+  flex: 0 0 auto;
+  color: #334ac0;
+  background: #f4f6ff;
+  border: 1px solid #dfe4ff;
+}
+
+.auto-model-button:hover:not(:disabled) {
+  color: #233db7;
+  background: #edf0ff;
+}
+
+.model-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 270px;
+  gap: 10px;
+  align-items: start;
+}
+
+.model-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.model-overlay.tool-select { cursor: default; }
+
+/* All graphical entities remain visible, while the active editing layer gets priority. */
+.wall-entity,
+.edge-entity,
+.map-node,
+.poi-map-marker,
+.qr-map-marker {
+  transition: opacity .14s ease, filter .14s ease;
+}
+
+.wall-line {
+  stroke: #3156e3;
+  stroke-width: 4;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.wall-hitbox,
+.edge-hitbox {
+  stroke: transparent;
+  stroke-width: 18;
+  vector-effect: non-scaling-stroke;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.edge-line {
+  stroke: #13a67a;
+  stroke-width: 3;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.map-node { cursor: pointer; }
+.map-node > circle {
+  fill: #ffffff;
+  stroke: #3658e8;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.map-node.selected > circle {
+  fill: #3658e8;
+  stroke: #ffffff;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 6px rgba(54, 88, 232, .8));
+}
+
+.map-label {
+  fill: #142039;
+  font-size: 11px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(255,255,255,.96);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.poi-map-marker { cursor: pointer; }
+.poi-map-marker > circle {
+  fill: #fff8e9;
+  stroke: #df8a18;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.poi-map-marker > text:not(.map-label) {
+  fill: #9a5b0b;
+  font-size: 9px;
+  font-weight: 900;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.poi-map-marker.selected > circle {
+  stroke-width: 5;
+  filter: drop-shadow(0 0 6px rgba(223, 138, 24, .7));
+}
+
+.qr-map-marker rect {
+  fill: #17233a;
+  stroke: #ffffff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.qr-map-marker text {
+  fill: white;
+  font-size: 7px;
+  font-weight: 900;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.wall-entity.selected .wall-line {
+  stroke: #132dbe;
+  stroke-width: 7;
+  filter: drop-shadow(0 0 4px rgba(49, 86, 227, .55));
+}
+
+.edge-entity.selected .edge-line {
+  stroke-width: 6;
+  filter: drop-shadow(0 0 5px rgba(19, 166, 122, .6));
+}
+
+.edge-entity.invalid .edge-line {
+  stroke: #d44855;
+  stroke-width: 4;
+  stroke-dasharray: 10 6;
+}
+
+.wall-edit-handles circle {
+  fill: #ffffff;
+  stroke: #132dbe;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+.wall-edit-handles circle:active { cursor: grabbing; }
+
+/* Focus/highlight the layer represented by the selected modeling tool. */
+.model-overlay.tool-wall .edge-entity,
+.model-overlay.tool-wall .map-node,
+.model-overlay.tool-wall .poi-map-marker,
+.model-overlay.tool-wall .qr-map-marker { opacity: .22; }
+.model-overlay.tool-wall .wall-line {
+  stroke-width: 7;
+  filter: drop-shadow(0 0 4px rgba(49, 86, 227, .55));
+}
+
+.model-overlay.tool-node .wall-entity,
+.model-overlay.tool-node .edge-entity,
+.model-overlay.tool-node .poi-map-marker,
+.model-overlay.tool-node .qr-map-marker { opacity: .2; }
+.model-overlay.tool-node .map-node > circle {
+  stroke-width: 5;
+  filter: drop-shadow(0 0 5px rgba(54, 88, 232, .65));
+}
+
+.model-overlay.tool-poi .wall-entity,
+.model-overlay.tool-poi .edge-entity,
+.model-overlay.tool-poi .map-node,
+.model-overlay.tool-poi .qr-map-marker { opacity: .2; }
+.model-overlay.tool-poi .poi-map-marker > circle {
+  stroke-width: 5;
+  filter: drop-shadow(0 0 5px rgba(223, 138, 24, .65));
+}
+
+.model-overlay.tool-edge .wall-entity,
+.model-overlay.tool-edge .poi-map-marker,
+.model-overlay.tool-edge .qr-map-marker { opacity: .28; }
+.model-overlay.tool-edge .edge-line {
+  stroke-width: 6;
+  filter: drop-shadow(0 0 5px rgba(19, 166, 122, .58));
+}
+.model-overlay.tool-edge .map-node > circle { stroke-width: 4; }
+
+.model-overlay.tool-connector .wall-entity,
+.model-overlay.tool-connector .edge-entity,
+.model-overlay.tool-connector .poi-map-marker,
+.model-overlay.tool-connector .qr-map-marker { opacity: .25; }
+.model-overlay.tool-connector .map-node > circle {
+  stroke-width: 5;
+  filter: drop-shadow(0 0 5px rgba(54, 88, 232, .55));
+}
+
+.model-overlay.tool-qr .wall-entity,
+.model-overlay.tool-qr .edge-entity,
+.model-overlay.tool-qr .poi-map-marker { opacity: .25; }
+.model-overlay.tool-qr .map-node > circle { stroke-width: 4; }
+.model-overlay.tool-qr .qr-map-marker { filter: drop-shadow(0 0 5px rgba(23, 35, 58, .6)); }
+
+/* Measuring/calibration are utilities: leave the authored map subdued instead of emphasizing a construction layer. */
+.model-overlay.tool-measure .wall-entity,
+.model-overlay.tool-measure .edge-entity,
+.model-overlay.tool-measure .map-node,
+.model-overlay.tool-measure .poi-map-marker,
+.model-overlay.tool-measure .qr-map-marker,
+.model-overlay.tool-scale .wall-entity,
+.model-overlay.tool-scale .edge-entity,
+.model-overlay.tool-scale .map-node,
+.model-overlay.tool-scale .poi-map-marker,
+.model-overlay.tool-scale .qr-map-marker { opacity: .38; }
+
+.measure-line {
+  stroke: #e17325;
+  stroke-width: 3;
+  stroke-dasharray: 8 5;
+  vector-effect: non-scaling-stroke;
+}
+.calibration-line {
+  stroke: #0f9c7a;
+  stroke-width: 3;
+  stroke-dasharray: 8 5;
+  vector-effect: non-scaling-stroke;
+}
+.guide-node {
+  fill: white;
+  stroke: #25324a;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.floating-measure {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  padding: 8px 11px;
+  border-radius: 8px;
+  background: #10192c;
+  color: white;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 800;
+  box-shadow: 0 6px 20px rgba(0,0,0,.16);
+}
+
+.tool-explanation {
+  margin: 0 0 13px;
+  color: #657188;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.inline-notice {
+  margin: 9px 0 12px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: #f1f4ff;
+  color: #44547d;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.danger-notice {
+  background: #fff1f3;
+  color: #a23b48;
+}
+
+.selection-chip {
+  margin: 9px 0;
+  padding: 8px 9px;
+  border-radius: 7px;
+  background: #eef2f8;
+  color: #68758a;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.selection-chip strong { display: inline; }
+
+.coordinate-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 8px;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  color: #58667b;
+  font-size: 10px;
+  font-weight: 700;
+}
+.checkbox-field input { accent-color: #3658e8; }
+
+.danger-button {
+  margin-top: 9px;
+  border-color: #f0cdd2;
+  color: #b43f4e;
+  background: #fff9fa;
+}
+.danger-button:hover { background: #fff0f2; }
+
+.mini-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 11px;
+}
+.mini-stats span {
+  padding: 7px;
+  border-radius: 7px;
+  background: #f6f8fb;
+  color: #8490a3;
+  font-size: 8px;
+}
+.mini-stats strong {
+  display: inline;
+  margin-right: 2px;
+  color: #344158;
+  font-size: 9px;
+}
+
+@media (max-width: 1280px) {
+  .model-layout { grid-template-columns: minmax(0, 1fr) 245px; }
+  .tool-button { padding-left: 8px; padding-right: 8px; }
+}
+
+/* Semantic node kinds proposed by Structural Mapping v3 */
+.map-node.kind-decision > circle { fill: #f5b301; stroke: #7a5600; }
+.map-node.kind-door > circle { fill: #2fbf71; stroke: #146c3d; }
+.map-node.kind-entrance > circle { fill: #ffd60a; stroke: #8a6d00; r: 10px; }
+.map-node.kind-room > circle { fill: #e63946; stroke: #7d1d25; r: 9px; }
+.map-node.kind-connector > circle { fill: #0aa8b8; stroke: #075f68; r: 9px; }
+
+.validation-block .validation-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+.validation-block .validation-list li { font-size: 12px; line-height: 1.35; padding: 6px 8px; border-radius: 6px; border-left: 3px solid transparent; }
+.validation-block li.validation-error { background: #fde8e8; border-left-color: #c62828; color: #7a1c1c; }
+.validation-block li.validation-warning { background: #fff5dd; border-left-color: #e0a100; color: #6b4d00; }
+.validation-block li.validation-info { background: #e8f1fd; border-left-color: #2f6fd8; color: #1d3f78; }

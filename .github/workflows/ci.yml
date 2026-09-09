@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install API
+        run: pip install -e './rumbo-api[dev]'
+      - name: Tests
+        working-directory: rumbo-api
+        run: pytest -q
+      - name: Structural mapper geometry tests (no ML)
+        working-directory: structural-mapper
+        run: |
+          pip install -r requirements-geometry.txt
+          pytest -q
+      - name: Exercise synthetic generator
+        run: python tools/mapping-dataset/generate_synthetic.py --count 3 --output /tmp/rumbo-synthetic
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install
+        working-directory: rumbo-web-app
+        run: npm install --no-audit --no-fund
+      - name: Build
+        working-directory: rumbo-web-app
+        run: npm run build
+
+  structural-mapper-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ML mapper image
+        run: docker build -t rumbo-structural-mapper ./structural-mapper
+      - name: Start mapper
+        run: docker run -d --name mapper -p 8010:8010 rumbo-structural-mapper
+      - name: Wait for model
+        run: |
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://localhost:8010/health > /tmp/health.json; then
+              cat /tmp/health.json
+              exit 0
+            fi
+            sleep 4
+          done
+          docker logs mapper
+          exit 1
+      - name: Analyze clinic sample
+        run: |
+          curl --fail --silent --show-error \
+            -F 'file=@rumbo-api/assets/sample-clinic-floor-1.jpg;type=image/jpeg' \
+            http://localhost:8010/analyze > /tmp/mapping.json
+          python - <<'PY'
+          import json
+          data = json.load(open('/tmp/mapping.json'))
+          diag = data['diagnostics']
+          print(json.dumps(diag, indent=2))
+          print(json.dumps(data['validation'], indent=2))
+          assert data['parser_version'] == '3'
+          assert 'buildingcv' in diag['backend'], 'ML backend was not loaded'
+          assert diag['wall_polygons'] > 0, 'parser returned no walls'
+          assert diag['spaces'] >= 5, 'expected the plan to be partitioned into spaces'
+          assert diag['doors'] >= 5, 'expected doors between rooms and circulation'
+          assert 2 <= diag['nodes'] < 300, f"expected sparse graph, got {diag['nodes']} nodes"
+          assert diag['edges'] >= 1, 'parser returned no navigation edges'
+          assert data['validation']['metrics']['edges_crossing_walls'] == 0, 'an edge crosses a wall'
+          PY
+      - name: Mapper logs on failure
+        if: failure()
+        run: docker logs mapper || true

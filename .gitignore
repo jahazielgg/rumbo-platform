@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+rumbo.db
+
+# Node
+node_modules/
+dist/
+
+# Env
+.env
+.env.local
+
+# Runtime uploads
+rumbo-api/storage/uploads/*
+!rumbo-api/storage/uploads/.gitkeep
+
+# OS
+.DS_Store
+
+# Build artifacts
+*.egg-info/
+rumbo-web-app/tsconfig.tsbuildinfo
+structural-mapper/.venv/
+
+
+# Contenido no incluido en la migración inicial
+/docs/
+/datasets/
+/samples/
+/rumbo-api/assets/sample-clinic-floor-2.jpg

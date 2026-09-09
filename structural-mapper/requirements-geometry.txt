@@ -1,0 +1,13 @@
+# Deterministic pipeline dependencies (no PyTorch). The Docker image adds BuildingCV.
+numpy>=2,<3
+opencv-python-headless>=4.10
+shapely>=2.0,<3
+networkx>=3.2
+scikit-image>=0.24,<1
+scipy>=1.12
+pillow>=10
+pymupdf>=1.24
+fastapi>=0.110
+python-multipart>=0.0.9
+uvicorn>=0.29
+pytest>=8

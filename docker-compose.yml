@@ -1,0 +1,71 @@
+services:
+  db:
+    image: imresamu/postgis:16-3.6.1-bookworm
+    environment:
+      POSTGRES_DB: rumbo
+      POSTGRES_USER: rumbo
+      POSTGRES_PASSWORD: rumbo
+    ports:
+      - "5432:5432"
+    volumes:
+      - rumbo_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rumbo -d rumbo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  structural-mapper:
+    container_name: rumbo-structural-mapper
+    build: ./structural-mapper
+    environment:
+      BUILDINGCV_DEVICE: cpu
+      BUILDINGCV_RUN_DIR: /opt/buildingcv/weights
+    ports:
+      - "8010:8010"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/health', timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 20
+      start_period: 45s
+
+  api:
+    container_name: rumbo-api
+    build: ./rumbo-api
+    environment:
+      DATABASE_URL: postgresql+psycopg://rumbo:rumbo@db:5432/rumbo
+      UPLOAD_DIR: /workspace/rumbo-api/storage/uploads
+      CORS_ORIGINS: http://localhost:5173
+      STRUCTURAL_MAPPER_URL: http://structural-mapper:8010
+      STRUCTURAL_MAPPER_TIMEOUT_SECONDS: 120
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./rumbo-api:/workspace/rumbo-api
+      - rumbo_uploads:/workspace/rumbo-api/storage/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      structural-mapper:
+        condition: service_healthy
+    command: ["bash", "-lc", "cd /workspace/rumbo-api && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
+
+  web:
+    container_name: rumbo-web-app
+    build: ./rumbo-web-app
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./rumbo-web-app:/workspace/rumbo-web-app
+      - /workspace/rumbo-web-app/node_modules
+    depends_on:
+      - api
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    working_dir: /workspace/rumbo-web-app
+
+volumes:
+  rumbo_postgres:
+  rumbo_uploads:
