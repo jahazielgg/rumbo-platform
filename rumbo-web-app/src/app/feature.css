@@ -14,3 +14,27 @@
 .sidebar,.nav-section,.nav-divider,.page-header,.model-toolbar,.inspector,.navigation-map-heading,.route-summary{border-left:0!important;border-right:0!important;border-top:0!important;border-bottom:0!important}
 
 @media(max-width:1280px){.model-layout{grid-template-columns:minmax(0,1fr)220px}.navigation-controls{grid-template-columns:1fr auto 1fr}.accessible-toggle,.navigation-controls>.button{grid-row:2}.navigation-layout{grid-template-columns:minmax(0,1fr)260px}}
+
+
+/* PR-214: text search narrows the available named destinations without
+   changing routing or persisting stale selections. */
+.destination-search-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid #dce1eb;
+  border-radius: 9px;
+  background: #fff;
+  padding: 0 10px;
+  color: #243149;
+  font-size: 12px;
+  outline: none;
+}
+.destination-search-input:focus-visible {
+  border-color: #8094ee;
+  box-shadow: 0 0 0 3px rgba(73, 101, 228, .08);
+}
+.destination-search-input:disabled {
+  background: #f4f5f8;
+  color: #9aa3b2;
+}
