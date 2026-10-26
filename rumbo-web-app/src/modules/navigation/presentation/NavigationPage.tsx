@@ -8,6 +8,7 @@ import type { SpatialModel } from '../../modeling/domain/model'
 import { getPositioningConfig } from '../../positioning/application/positioningApi'
 import type { PositioningConfig } from '../../positioning/domain/positioning'
 import { calculateRoute, getNavigationConfig } from '../application/navigationApi'
+import { filterDestinations } from '../application/destinationSearch'
 import type { NavigationConfig, RouteResult } from '../domain/navigation'
 import { NavigationMap } from './components/NavigationMap'
 
@@ -21,6 +22,7 @@ export function NavigationPage() {
   const [error, setError] = useState<string | null>(null)
   const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
+  const [destinationQuery, setDestinationQuery] = useState('')
   const [accessibleOnly, setAccessibleOnly] = useState(false)
   const [route, setRoute] = useState<RouteResult | null>(null)
   const [activeFloorId, setActiveFloorId] = useState('')
@@ -71,11 +73,11 @@ export function NavigationPage() {
   }, [floors])
 
   const destinationOptions = useMemo<LocationOption[]>(() => floors.flatMap((floor) => floor.model.pois.map((poi) => ({ value: `${floor.floorplan.id}::${poi.node_id}`, floorplanId: floor.floorplan.id, nodeId: poi.node_id, label: poi.name, detail: `${floor.floorplan.building_name} · ${floor.floorplan.floor_label}` }))), [floors])
+  const filteredDestinationOptions = useMemo(() => filterDestinations(destinationOptions, destinationQuery), [destinationOptions, destinationQuery])
 
   useEffect(() => {
     if (!origin && originOptions[0]) setOrigin(originOptions[0].value)
-    if (!destination && destinationOptions[0]) setDestination((destinationOptions.find((item) => item.value !== originOptions[0]?.value) ?? destinationOptions[0]).value)
-  }, [origin, destination, originOptions, destinationOptions])
+  }, [origin, originOptions])
 
   const routeFloorIds = useMemo(() => Array.from(new Set(route?.nodes.map((node) => node.floorplan_id) ?? [])), [route])
   const activeFloor = floors.find((item) => item.floorplan.id === activeFloorId) ?? floors.find((item) => item.floorplan.id === routeFloorIds[0]) ?? floors[0]
@@ -101,7 +103,33 @@ export function NavigationPage() {
       <section className="navigation-controls panel">
         <label className="navigation-field"><span><LocateFixed size={14}/> Origen</span><select value={origin} onChange={(event) => { setOrigin(event.target.value); setRoute(null) }}>{originOptions.map((item, index) => <option key={`${item.value}-${item.label}-${index}`} value={item.value}>{item.label} · {item.detail}</option>)}</select></label>
         <ArrowRight className="navigation-arrow" size={18} />
-        <label className="navigation-field"><span><MapPinned size={14}/> Destino</span><select value={destination} onChange={(event) => { setDestination(event.target.value); setRoute(null) }}>{destinationOptions.map((item) => <option key={`${item.value}-${item.label}`} value={item.value}>{item.label} · {item.detail}</option>)}</select></label>
+        <label className="navigation-field">
+          <span><MapPinned size={14}/> Destino</span>
+          <input
+            className="destination-search-input"
+            type="search"
+            aria-label="Buscar destino por nombre, sede o piso"
+            placeholder="Buscar consultorio, sede o piso…"
+            value={destinationQuery}
+            onChange={(event) => {
+              setDestinationQuery(event.target.value)
+              setDestination('')
+              setRoute(null)
+            }}
+            disabled={loading}
+          />
+          <select
+            aria-label="Seleccionar destino"
+            value={destination}
+            onChange={(event) => { setDestination(event.target.value); setRoute(null) }}
+            disabled={loading || filteredDestinationOptions.length === 0}
+          >
+            <option value="">{filteredDestinationOptions.length ? 'Selecciona un destino' : 'No hay destinos coincidentes'}</option>
+            {filteredDestinationOptions.map((item) =>
+              <option key={`${item.value}-${item.label}`} value={item.value}>{item.label} · {item.detail}</option>
+            )}
+          </select>
+        </label>
         <label className="accessible-toggle"><input type="checkbox" checked={accessibleOnly} onChange={(event) => { setAccessibleOnly(event.target.checked); setRoute(null) }} /><Accessibility size={16}/><span>Solo accesible</span></label>
         <button className="button primary" onClick={() => void buildRoute()} disabled={!origin || !destination || calculating || loading}><Route size={16}/> {calculating ? 'Calculando…' : 'Calcular ruta'}</button>
       </section>
